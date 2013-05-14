@@ -4,6 +4,7 @@ require 'optparse'
 require 'find'
 require 'etc'
 require 'rubygems'
+require 'tmpdir'
 
 Version = "1.4"
 SUPPORTED_SCM = %w( Subversion Darcs Mercurial Bazaar Git Filesystem )
@@ -46,6 +47,24 @@ module SCM
         system_or_raise "git --bare init --shared"
         system_or_raise "git update-server-info"
       end
+    end
+
+    def self.create_readme(repos_path)
+      tmpdir = Dir.tmpdir
+      repos_identifier = File.basename(repos_path)
+      cloned_repos_path = File.join(tmpdir, repos_identifier)
+      readme_filename = 'README'
+
+      system_or_raise "git clone #{repos_path} #{tmpdir}/#{repos_identifier}"
+
+      Dir.chdir(cloned_repos_path) do
+        system_or_raise "touch " + readme_filename
+        system_or_raise "git add " + readme_filename
+        system_or_raise "git commit -m 'Added readme'"
+        system_or_raise "git push origin master"
+      end
+
+      FileUtils.rm_rf(cloned_repos_path)
     end
   end
 
@@ -271,6 +290,7 @@ projects.each do |project|
           system_or_raise "#{$command} #{repos_path}"
         else
           scm_module.create(repos_path)
+          scm_module.create_readme(repos_path) if scm_module.respond_to?('create_readme')
         end
       end
     rescue => e
