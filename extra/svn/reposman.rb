@@ -12,6 +12,7 @@ $verbose      = 0
 $quiet        = false
 $redmine_host = ''
 $repos_base   = ''
+$repos_suffix = ''
 $svn_owner    = 'root'
 $svn_group    = 'root'
 $use_groupid  = true
@@ -117,6 +118,7 @@ optparse = OptionParser.new do |opts|
   opts.on("-V", "--version",           "show version and exit") {puts Version; exit}
   opts.on("-h", "--help",              "show help and exit") {puts opts; exit 1}
   opts.on("-q", "--quiet",             "no log") {$quiet = true}
+  opts.on("--repos-suffix SUFFIX"      "add suffix to repository name (e.g. .git)") {|v| $repos_suffix = v}
   opts.separator("")
   opts.separator("Examples:")
   opts.separator("  reposman.rb --svn-dir=/var/svn --redmine-host=redmine.host")
@@ -149,7 +151,7 @@ if ($redmine_host.empty? or $repos_base.empty?)
 end
 
 unless File.directory?($repos_base)
-  log("directory '#{$repos_base}' doesn't exists", :exit => true)
+  log("directory '#{$repos_base}' doesn't exist", :exit => true)
 end
 
 begin
@@ -224,7 +226,7 @@ projects.each do |project|
     next;
   end
 
-  repos_path = File.join($repos_base, project.identifier).gsub(File::SEPARATOR, File::ALT_SEPARATOR || File::SEPARATOR)
+  repos_path = File.join($repos_base, project.identifier).gsub(File::SEPARATOR, File::ALT_SEPARATOR || File::SEPARATOR) + $repos_suffix
 
   if File.directory?(repos_path)
     # we must verify that repository has the good owner and the good
@@ -259,7 +261,7 @@ projects.each do |project|
 
     if $test
       log("\tcreate repository #{repos_path}")
-      log("\trepository #{repos_path} registered in Redmine with url #{$svn_url}#{project.identifier}") if $svn_url;
+      log("\trepository #{repos_path} registered in Redmine with url #{$svn_url}#{project.identifier}#{$repos_suffix}") if $svn_url;
       next
     end
 
@@ -278,8 +280,8 @@ projects.each do |project|
 
     if $svn_url
       begin
-        project.post(:repository, :vendor => $scm, :repository => {:url => "#{$svn_url}#{project.identifier}"}, :key => $api_key)
-        log("\trepository #{repos_path} registered in Redmine with url #{$svn_url}#{project.identifier}");
+        project.post(:repository, :vendor => $scm, :repository => {:url => "#{$svn_url}#{project.identifier}#{$repos_suffix}"}, :key => $api_key)
+        log("\trepository #{repos_path} registered in Redmine with url #{$svn_url}#{project.identifier}#{$repos_suffix}");
       rescue => e
         log("\trepository #{repos_path} not registered in Redmine: #{e.message}");
       end
